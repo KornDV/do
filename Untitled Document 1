@@ -1,0 +1,94 @@
+----------------------------------------------------------------------------------
+UBUNUNTU 20 server for DJANGO 3
+----------------------------------------------------------------------------------
+
+1. 
+sudo mkdir /var/site
+sudo apt-get update
+sudo apt-get install -y python3-pip python3-venv nginx
+
+sudo python3 -m venv /var/site/env
+source /var/site/env/bin/activate
+
+pip3 install Django
+cd /var/site
+django-admin startproject demo
+pip3 install gunicorn
+deactivate
+
+2.
+----------------------------------------------------------------------------------
+nano /var/site/demo/gunicorn_config.py          
+----------------------------------------------------------------------------------                                   
+command = '/var/site/env/bin/gunicorn'
+pythonpath = '/var/site/demo/demo/'
+bind = '127.0.0.1:8001'
+workers = 3
+user = 'root'
+limit_request_fields = 32000
+limit_request_field_size = 0
+raw_env = 'DJANGO_SETTINGS_MODULE=demo.settings'
+----------------------------------------------------------------------------------
+
+3.
+----------------------------------------------------------------------------------
+nano /var/site/demo/start_gunicorn.sh          
+----------------------------------------------------------------------------------                                   
+#!/bin/bash
+source /var/site/env/bin/activate
+exec gunicorn -c "/var/site/demo/gunicorn_config.py" demo.wsgi
+----------------------------------------------------------------------------------
+chmod +x /var/site/demo/start_gunicorn.sh
+
+4.
+----------------------------------------------------------------------------------
+nano /etc/nginx/sites-enabled/default 
+----------------------------------------------------------------------------------
+server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+
+        root /var/www/html;
+
+        index index.html index.htm index.nginx-debian.html;
+
+        server_name _;
+
+        location /static/ {
+                root /var/site/demo/;
+        }
+
+        location / {
+                proxy_pass http://127.0.0.1:8001;
+                proxy_set_header X-Forwarded-Host $server_name;
+                proxy_set_header X-Real-IP $remote_addr;
+                add_header P3P 'CP="ALL DSP COR PSAa PSDa OUR NOR ONL UNI COM NAV"';
+                add_header Access-Conrol-Allow-Origin *;
+        }
+}
+----------------------------------------------------------------------------------
+sudo service nginx restart
+
+5.
+----------------------------------------------------------------------------------
+nano /etc/systemd/system/guni.service
+----------------------------------------------------------------------------------
+[Unit]
+Descriptiom=Guni
+
+[Service]
+User=root
+WorkingDirectory=/var/site/demo/
+VIRTUAL_ENV=/var/site/env
+Environment=PATH=$VIRTUAL_ENV/bin:$PATH
+
+ExecStart=/var/site/env/bin/gunicorn -c /var/site/demo/gunicorn_config.py demo.wsgi
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+----------------------------------------------------------------------------------
+systemctl start guni.service
+systemctl enable guni.service
+
+
