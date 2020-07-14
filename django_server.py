@@ -89,5 +89,5 @@ WantedBy=multi-user.target'''
 with open('/etc/systemd/system/guni.service', 'w') as f:
         f.write(guni_service)
 
-now_command='systemctl start guni.service; systemctl enable guni.service'
+now_command='sudo systemctl start guni.service; sudo systemctl enable guni.service'
 os.system(now_command)
