@@ -91,4 +91,4 @@ def instal_django():
 
 
 if __name__ == '__main__':
-
+    update_system()
